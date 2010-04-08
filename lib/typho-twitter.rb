@@ -1,0 +1,1 @@
+require 'typho-twitter/typho-twitter'

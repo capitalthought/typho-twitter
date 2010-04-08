@@ -5,15 +5,15 @@ begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
     gem.name = "typho-twitter"
-    gem.summary = %Q{TODO: one-line summary of your gem}
-    gem.description = %Q{TODO: longer description of your gem}
+    gem.summary = %Q{Parallel twitter client using Typhoeus.}
+    gem.description = %Q{A Twitter client for performing a batch of Twitter calls in parallel.}
     gem.email = "billdoughty@capitalthought.com"
-    gem.homepage = "http://github.com/shock/typho-twitter"
+    gem.homepage = "http://github.com/capitalthought/typho-twitter"
     gem.authors = ["shock"]
     gem.add_development_dependency "rspec", ">= 1.2.9"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
-  Jeweler::GemcutterTasks.new
+#  Jeweler::GemcutterTasks.new
 rescue LoadError
   puts "Jeweler (or a dependency) not available. Install it with: gem install jeweler"
 end
