@@ -27,7 +27,8 @@ Gem::Specification.new do |s|
      "lib/typho-twitter/typho-twitter.rb",
      "spec/spec.opts",
      "spec/spec_helper.rb",
-     "test/typho-twitter-test.rb"
+     "test/typho-twitter-test.rb",
+     "typho-twitter.gemspec"
   ]
   s.homepage = %q{http://github.com/capitalthought/typho-twitter}
   s.rdoc_options = ["--charset=UTF-8"]
