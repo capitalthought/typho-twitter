@@ -150,12 +150,12 @@ class TyphoTwitter
       if twitter_id.is_a? Fixnum
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?user_id=#{twitter_id}",
           :headers => @headers,
-          :timeout => @request_timeout, # milliseconds          
+          :timeout => @request_timeout # milliseconds          
         )
       else
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?screen_name=#{twitter_id}",
           :timeout => @request_timeout, # milliseconds          
-          :headers => @headers,
+          :headers => @headers
         )
       end
       request
@@ -219,7 +219,7 @@ class TyphoTwitter
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/statuses/followers.json?cursor=#{cursor_tracker[twitter_id]}&user_id=#{twitter_id}",
             :headers => @headers,
-            :timeout => @request_timeout,
+            :timeout => @request_timeout
           )
         else
           request = Typhoeus::Request.new("http://twitter.com/statuses/followers.json?cursor=#{cursor_tracker[twitter_id]}&screen_name=#{twitter_id}",
@@ -281,12 +281,12 @@ class TyphoTwitter
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/followers/ids.json?cursor=#{cursor_tracker[twitter_id]}&user_id=#{twitter_id}",
             :headers => @headers,
-            :timeout => @request_timeout,
+            :timeout => @request_timeout
           )
         else
           request = Typhoeus::Request.new("http://twitter.com/followers/ids.json?cursor=#{cursor_tracker[twitter_id]}&screen_name=#{twitter_id}",
             :headers => @headers,
-            :timeout => @request_timeout,
+            :timeout => @request_timeout
           )
         end
       end
@@ -359,12 +359,12 @@ class TyphoTwitter
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/statuses/user_timeline.json?user_id=#{twitter_id}&page=#{page}&count=#{count}",
             :headers => @headers,
-            :timeout => @request_timeout,
+            :timeout => @request_timeout
           )
         else
           request = Typhoeus::Request.new("http://twitter.com/statuses/user_timeline.json?screen_name=#{twitter_id}&page=#{page}&count=#{count}",
             :headers => @headers,
-            :timeout => @request_timeout,
+            :timeout => @request_timeout
           )
         end
       end
