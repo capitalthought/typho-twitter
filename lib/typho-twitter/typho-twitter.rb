@@ -44,61 +44,36 @@ class TyphoTwitter
     end
   end
     
-  ##############################################################
-  # TYPHOEUS STUFF
-  #
-
-    include Typhoeus
-    remote_defaults :on_success => lambda { |response| puts "TWITTER - Success"; 
-                                            json_result_object = JSON.parse( response.body );
-                                            json_result_object },
-                    :on_failure => lambda { |response| puts "TWITTER - ERROR #{response.code}"; 
-                                            raise HTTPException.new( response.code, response.body ) },
-                    :headers => @headers
-                    
-    # Typhoeus HTTP call declarations
-    define_remote_method :typho_twitter, :base_uri   => "http://twitter.com"
-    define_remote_method :typho_timeline, {
-      :base_uri   => "http://twitter.com",
-      :on_success => lambda { |response| #puts "TWITTER - Success"; 
-        timeline_updates = JSON.parse( response.body );
-        timeline_updates.collect{ |c| c.delete( "user" ); c  }
-      }
-    }
-
-  #
-  # TYPHOEUS STUFF
-  ##############################################################
-  
   attr :login
   attr :password
   attr :headers
   
   # Constants 
-  TWITTER_THROTTLE_LIMIT = 20      # Theoretical Twitter throttle limit
-  TWITTER_THROTTLE_TIMEOUT = 0    # Theoretical time period (seconds) for Twitter throttle limit
   NUM_FAILED_RETRIES = 100
+  DEFAULT_REQUEST_TIMEOUT = 10000
+  DEFAULT_CONCURRENCY_LIMIT = 40
   
   # +login+ - Twitter account login to use for authentication
   # +password+ - Password for Twitter login
-  # +batch_size+ - Number of Twitter calls to batch together using Typhoeus
-  # +batch_period+ - Minimum number of seconds to wait between Typhoeus batches (float supported)
-  def initialize login, password, batch_size=TWITTER_THROTTLE_LIMIT, batch_period=TWITTER_THROTTLE_TIMEOUT
+  # +request_timeout+ - Request timeout value in miliseconds
+  def initialize login, password, concurrency_limit = DEFAULT_CONCURRENCY_LIMIT, request_timeout=DEFAULT_REQUEST_TIMEOUT
     @login, @password = login, password
     b64_encoded = Base64.b64encode("#{login}:#{password}")
     @headers = {"Authorization" => "Basic #{b64_encoded}"}
-    @batch_size, @batch_period = batch_size, batch_period
+    @request_timeout = request_timeout
+    @concurrency_limit = concurrency_limit
   end
 
-  # Does a batched group of Twitter calls.  Handles retries when possible on failures.
+  # Executes a batch of Twitter calls.  Automatically handles retries when possible on failures.
+  # Returns a hash where each +data_array+ element is a key mapping to either 
+  # a hash containing the results of the twitter call or a TwitterException object of the twitter call failed.
+  # If +data_array+ is bigger than the concurrency_limit set in the TyphoTwitter constructor
   # +data_array+ - An array of data inputs, one for each twitter call
   # +&block+ - A block that accepts a slice of +data_array+ and returns a batch (array) of Tyhpoeus proxy objects.
   def typho_twitter_batch data_array, &block
     json_results = {}
-    typho_slice_size = @batch_size # total number of users we can lookup per Typhoeus batch
     retries = 0
-    @time_gate = WDD::Utilities::TimeGate.new
-    hydra = Typhoeus::Hydra.new(:max_concurrency => 40)
+    hydra = Typhoeus::Hydra.new(:max_concurrency => @concurrency_limit)
     hydra.disable_memoization
     
     failed_data_inputs = []
@@ -174,11 +149,13 @@ class TyphoTwitter
     typho_twitter_batch( id_array ) do |twitter_id|
       if twitter_id.is_a? Fixnum
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?user_id=#{twitter_id}",
-          :headers => @headers
+          :headers => @headers,
+          :timeout => @request_timeout, # milliseconds          
         )
       else
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?screen_name=#{twitter_id}",
-          :headers => @headers
+          :timeout => @request_timeout, # milliseconds          
+          :headers => @headers,
         )
       end
       request
@@ -241,10 +218,12 @@ class TyphoTwitter
       twitter_results = typho_twitter_batch( cursor_tracker.keys ) do |twitter_id|
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/statuses/followers.json?cursor=#{cursor_tracker[twitter_id]}&user_id=#{twitter_id}",
-            :headers => @headers
+            :headers => @headers,
+            :timeout => @request_timeout,
           )
         else
           request = Typhoeus::Request.new("http://twitter.com/statuses/followers.json?cursor=#{cursor_tracker[twitter_id]}&screen_name=#{twitter_id}",
+            :timeout => @request_timeout,
             :headers => @headers
           )
         end
@@ -301,11 +280,13 @@ class TyphoTwitter
       twitter_results = typho_twitter_batch( cursor_tracker.keys ) do |twitter_id|
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/followers/ids.json?cursor=#{cursor_tracker[twitter_id]}&user_id=#{twitter_id}",
-            :headers => @headers
+            :headers => @headers,
+            :timeout => @request_timeout,
           )
         else
           request = Typhoeus::Request.new("http://twitter.com/followers/ids.json?cursor=#{cursor_tracker[twitter_id]}&screen_name=#{twitter_id}",
-            :headers => @headers
+            :headers => @headers,
+            :timeout => @request_timeout,
           )
         end
       end
@@ -377,11 +358,13 @@ class TyphoTwitter
       twitter_results = typho_twitter_batch( twitter_ids ) do |twitter_id|
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/statuses/user_timeline.json?user_id=#{twitter_id}&page=#{page}&count=#{count}",
-            :headers => @headers
+            :headers => @headers,
+            :timeout => @request_timeout,
           )
         else
           request = Typhoeus::Request.new("http://twitter.com/statuses/user_timeline.json?screen_name=#{twitter_id}&page=#{page}&count=#{count}",
-            :headers => @headers
+            :headers => @headers,
+            :timeout => @request_timeout,
           )
         end
       end
