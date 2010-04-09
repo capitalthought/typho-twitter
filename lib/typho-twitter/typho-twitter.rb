@@ -90,7 +90,7 @@ class TyphoTwitter
             json_results[data_input] = json_object
             retries = 0
           rescue JSON::ParserError
-            puts json_result
+            puts response.body
             puts "TWITTER: #{$!.inspect}"
             retries += 1
             sleep_time = retries ** 2
