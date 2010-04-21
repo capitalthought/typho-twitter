@@ -18,9 +18,17 @@ class TyphoTwitter
   
   include WDD::Utilities
   
-  def puts message
-    Kernel.puts message
+  private
+  
+  def logger  
+    @logger
   end
+  
+  def puts message
+    logger.debug message
+  end
+  
+  public
   
   class HTTPException < RuntimeError
     attr :code
@@ -55,13 +63,21 @@ class TyphoTwitter
   
   # +login+ - Twitter account login to use for authentication
   # +password+ - Password for Twitter login
-  # +request_timeout+ - Request timeout value in miliseconds
-  def initialize login, password, concurrency_limit = DEFAULT_CONCURRENCY_LIMIT, request_timeout=DEFAULT_REQUEST_TIMEOUT
+  # +options+ - :request_timeout Request timeout value in miliseconds
+  # +options+ - :concurrency_limit Maximum number of concurrent Typhoeus requests
+  # +options+ - :logger Logger to use - defaults to standard out with DEBUG level if not specified.
+  def initialize login, password, options={}
     @login, @password = login, password
     b64_encoded = Base64.b64encode("#{login}:#{password}")
     @headers = {"Authorization" => "Basic #{b64_encoded}"}
-    @request_timeout = request_timeout
-    @concurrency_limit = concurrency_limit
+    @request_timeout = options[:request_timeout] || DEFAULT_REQUEST_TIMEOUT
+    @concurrency_limit = options[:concurrency_limit] || DEFAULT_CONCURRENCY_LIMIT
+    @logger = options[:logger]
+    if @logger.nil?
+      $stdout.sync = true
+      @logger = Logger.new( $stdout )
+      @logger.level = Logger::DEBUG
+    end
   end
 
   # Executes a batch of Twitter calls.  Automatically handles retries when possible on failures.

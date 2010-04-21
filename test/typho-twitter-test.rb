@@ -63,7 +63,7 @@ def test_process_statuses_user_timeline
   screen_names = TEST_USER_IDS
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 3 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   user_updates = {}
   twitter.process_statuses_user_timeline( screen_name_array ) do |screen_name, updates|
     if screen_name == UNKNOWN_ID
@@ -89,7 +89,7 @@ def test_get_statuses_user_timeline
   screen_names = TEST_USER_IDS
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 20 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   user_updates = twitter.get_statuses_user_timeline( screen_name_array )
   user_updates.each do |key, value|
     puts "#{key} => "
@@ -111,7 +111,7 @@ def test_get_statuses_followers
   screen_names = ['bdoughty']
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 20 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   followers = twitter.get_statuses_followers( screen_name_array )
   followers.each do |screen_name, results|
     puts "#{screen_name}:"
@@ -126,7 +126,7 @@ def test_get_statuses_followers
   screen_names = ['basdkhasdf']
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 20 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   followers = twitter.get_statuses_followers( screen_name_array )
   followers.each do |screen_name, results|
     puts "#{screen_name}:"
@@ -140,7 +140,7 @@ def test_get_statuses_followers_with_limit
   screen_names = ['joshuabaer']
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 20 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   followers_data = twitter.get_statuses_followers( screen_name_array, 100 )
   followers_data.each do |screen_name, followers|
     puts "#{screen_name}:"
@@ -156,7 +156,7 @@ def test_get_statuses_followers_with_limit
   screen_names = ['basdkhasdf']
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 20 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   followers = twitter.get_statuses_followers( screen_name_array )
   followers.each do |screen_name, results|
     puts "#{screen_name}:"
@@ -170,7 +170,7 @@ def test_process_statuses_user_timeline_with_abort
   screen_names = TEST_USER_IDS
   screen_name_array = screen_names
   # screen_name_array += screen_names
-  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008', 3 )
+  twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
   user_updates = {}
   twitter.process_statuses_user_timeline( screen_name_array ) do |screen_name, results|
     puts "#{screen_name} =>"
