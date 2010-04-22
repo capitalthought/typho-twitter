@@ -115,6 +115,7 @@ class TyphoTwitter
           end
         when 0:
           puts "**** Twitter Timeout (#{response.code}) for #{data_input}."
+          puts "Response body: #{response.body}"
           retries += 1
           sleep_time = retries ** 2
           puts "Will retry after sleeping for #{sleep_time} seconds"
