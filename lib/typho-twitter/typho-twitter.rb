@@ -114,21 +114,21 @@ class TyphoTwitter
             hydra.queue request
           end
         when 0:
-          puts "**** Twitter Timeout for #{data_input}."
+          puts "**** Twitter Timeout (#{response.code}) for #{data_input}."
           retries += 1
           sleep_time = retries ** 2
           puts "Will retry after sleeping for #{sleep_time} seconds"
           sleep sleep_time
           hydra.queue request          
         when 400:
-          puts "**** Twitter Rate Limit Exceeded for #{data_input}."
+          puts "**** Twitter Rate Limit Exceeded (#{response.code}) for #{data_input}."
           retries += 1
           sleep_time = retries ** 2
           puts "Will retry after sleeping for #{sleep_time} seconds"
           sleep sleep_time
           hydra.queue request          
         when 401:
-          puts "**** Twitter Authorization Failed for #{data_input}."
+          puts "**** Twitter Authorization Failed (#{response.code}) for #{data_input}."
           puts "Request URL: #{request.url}"
           json_results[data_input] = TwitterException.new(response.code, response.body)
         when 404:
@@ -136,7 +136,15 @@ class TyphoTwitter
           puts "Request URL: #{request.url}"
           json_results[data_input] = TwitterException.new(response.code, response.body)
         when 502:
-          puts "Twitter Over capacity for data_input: #{data_input}.  Will retry."
+          puts "Twitter Over capacity (#{response.code}) for data_input: #{data_input}.  Will retry."
+          puts "Request URL: #{request.url}"
+          retries += 1
+          sleep_time = retries ** 2
+          puts "Will retry after sleeping for #{sleep_time} seconds"
+          sleep sleep_time
+          hydra.queue request
+        when 503:
+          puts "Twitter Service Unavailable (#{response.code}) for data_input: #{data_input}.  Will retry."
           puts "Request URL: #{request.url}"
           retries += 1
           sleep_time = retries ** 2
