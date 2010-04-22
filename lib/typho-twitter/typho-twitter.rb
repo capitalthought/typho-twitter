@@ -10,6 +10,7 @@ require "typhoeus"
 require "pp"
 require 'json'
 require 'base64'
+require 'logger'
 
 # Class to abstract access to Twitter's Web Traffic API.
 # Makes use of the Typhoeus gem to enable concurrent API calls.
@@ -57,7 +58,6 @@ class TyphoTwitter
   attr :headers
   
   # Constants 
-  NUM_FAILED_RETRIES = 100
   DEFAULT_REQUEST_TIMEOUT = 10000
   DEFAULT_CONCURRENCY_LIMIT = 40
   
@@ -83,17 +83,16 @@ class TyphoTwitter
   # Executes a batch of Twitter calls.  Automatically handles retries when possible on failures.
   # Returns a hash where each +data_array+ element is a key mapping to either 
   # a hash containing the results of the twitter call or a TwitterException object of the twitter call failed.
-  # If +data_array+ is bigger than the concurrency_limit set in the TyphoTwitter constructor
+  # If +data_array+ is bigger than the concurrency_limit set in the TyphoTwitter constructor, it is broken
+  # up into batches of requests by Typhoeus automatically.
   # +data_array+ - An array of data inputs, one for each twitter call
-  # +&block+ - A block that accepts a slice of +data_array+ and returns a batch (array) of Tyhpoeus proxy objects.
+  # +&block+ - A block that accepts an element of +data_array+ and returns a Tyhpoeus::Request object.
   def typho_twitter_batch data_array, &block
     json_results = {}
     retries = 0
     hydra = Typhoeus::Hydra.new(:max_concurrency => @concurrency_limit)
     hydra.disable_memoization
     
-    failed_data_inputs = []
-    data_array_slice = data_array
     data_array.each do |data_input|
       request = yield( data_input )
       # printvar :request, request
@@ -114,6 +113,20 @@ class TyphoTwitter
             sleep sleep_time
             hydra.queue request
           end
+        when 0:
+          puts "**** Twitter Timeout for #{data_input}."
+          retries += 1
+          sleep_time = retries ** 2
+          puts "Will retry after sleeping for #{sleep_time} seconds"
+          sleep sleep_time
+          hydra.queue request          
+        when 400:
+          puts "**** Twitter Rate Limit Exceeded for #{data_input}."
+          retries += 1
+          sleep_time = retries ** 2
+          puts "Will retry after sleeping for #{sleep_time} seconds"
+          sleep sleep_time
+          hydra.queue request          
         when 401:
           puts "**** Twitter Authorization Failed for #{data_input}."
           puts "Request URL: #{request.url}"
@@ -127,7 +140,7 @@ class TyphoTwitter
           puts "Request URL: #{request.url}"
           retries += 1
           sleep_time = retries ** 2
-          puts "Will retrying after sleeping for #{sleep_time} seconds"
+          puts "Will retry after sleeping for #{sleep_time} seconds"
           sleep sleep_time
           hydra.queue request
         when 500:
@@ -135,25 +148,18 @@ class TyphoTwitter
           puts "Request URL: #{request.url}"
           retries += 1
           sleep_time = retries ** 2
-          puts "Will retrying after sleeping for #{sleep_time} seconds"
+          puts "Will retry after sleeping for #{sleep_time} seconds"
           sleep sleep_time
           hydra.queue request
         else
-          puts "Unexpected HTTP result code: #{response.code}\n#{response.body}"
-          puts "Request URL: #{request.url}"
-          # retries += 1
-          sleep_time = retries ** 2
-          puts "Will retrying after sleeping for #{sleep_time} seconds"
-          sleep sleep_time
-          hydra.queue request
+          logger.error "Unexpected HTTP result code: #{response.code}\n#{response.body}"
+          logger.error "Request URL: #{request.url}"
+          json_results[data_input] = TwitterException.new(response.code, response.body)
         end        
       end
       hydra.queue request
     end
     hydra.run
-    data_array = failed_data_inputs
-    retries -= 1
-    # WDD::Utilities::printvar :json_results, json_results
     json_results
   end  
   
@@ -166,11 +172,11 @@ class TyphoTwitter
       if twitter_id.is_a? Fixnum
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?user_id=#{twitter_id}",
           :headers => @headers,
-          :timeout => @request_timeout # milliseconds          
+          :timeout => @request_timeout # miliseconds          
         )
       else
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?screen_name=#{twitter_id}",
-          :timeout => @request_timeout, # milliseconds          
+          :timeout => @request_timeout, # miliseconds          
           :headers => @headers
         )
       end
