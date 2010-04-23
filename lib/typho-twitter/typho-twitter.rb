@@ -11,6 +11,7 @@ require "pp"
 require 'json'
 require 'base64'
 require 'logger'
+require "thread"
 
 # Class to abstract access to Twitter's Web Traffic API.
 # Makes use of the Typhoeus gem to enable concurrent API calls.
@@ -58,8 +59,9 @@ class TyphoTwitter
   attr :headers
   
   # Constants 
-  DEFAULT_REQUEST_TIMEOUT = 10000
+  DEFAULT_REQUEST_TIMEOUT = 20000
   DEFAULT_CONCURRENCY_LIMIT = 40
+  MAX_RETRIES = 10
   
   # +login+ - Twitter account login to use for authentication
   # +password+ - Password for Twitter login
@@ -80,7 +82,7 @@ class TyphoTwitter
     end
   end
 
-  # Executes a batch of Twitter calls.  Automatically handles retries when possible on failures.
+  # Executes a batch of Twitter calls.  Automatically handles timeout_retries when possible on failures.
   # Returns a hash where each +data_array+ element is a key mapping to either 
   # a hash containing the results of the twitter call or a TwitterException object of the twitter call failed.
   # If +data_array+ is bigger than the concurrency_limit set in the TyphoTwitter constructor, it is broken
@@ -88,87 +90,122 @@ class TyphoTwitter
   # +data_array+ - An array of data inputs, one for each twitter call
   # +&block+ - A block that accepts an element of +data_array+ and returns a Tyhpoeus::Request object.
   def typho_twitter_batch data_array, &block
-    json_results = {}
-    retries = 0
-    hydra = Typhoeus::Hydra.new(:max_concurrency => @concurrency_limit)
-    hydra.disable_memoization
     
-    data_array.each do |data_input|
-      request = yield( data_input )
-      # printvar :request, request
-      request.on_complete do |response|
-        puts "[#{response.code}] - #{request.url}"
-        case response.code
-        when 200:
-          begin
-            json_object = JSON.parse( response.body )
-            json_results[data_input] = json_object
-            retries = 0
-          rescue JSON::ParserError
-            puts response.body
-            puts "TWITTER: #{$!.inspect}"
+    json_results = {}
+    timeout_retries = 0
+    time_gate = WDD::Utilities::TimeGate.new
+    rate_limit_exceeded = false
+    while data_array.length > 0
+      puts "Waiting on rate limiting Time Gate"
+      time_gate.wait
+      puts "Time Gate released"
+      hydra = Typhoeus::Hydra.new(:max_concurrency => @concurrency_limit)
+      hydra.disable_memoization
+      
+      retries = 0
+      
+      timed_out_inputs = Queue.new
+      data_array.each do |data_input|
+        request = yield( data_input )
+        # printvar :request, request
+        request.on_complete do |response|
+          puts "[#{response.code}] - #{request.url}"
+          case response.code
+          when 200:
+            begin
+              json_object = JSON.parse( response.body )
+              json_results[data_input] = json_object
+              retries = 0
+            rescue JSON::ParserError
+              puts "TWITTER: #{$!.inspect}"
+              # puts response.body
+              if timeout_retries < MAX_RETRIES
+                timed_out_inputs.push data_input
+              else
+                json_results[data_input] = $!
+              end
+            end
+          when 0:
+            puts "**** Twitter Timeout (#{response.code}) for #{data_input}."
+            puts "Response body: #{response.body}"
+            if timeout_retries < MAX_RETRIES
+              timed_out_inputs.push data_input
+            else
+              json_results[data_input] = TwitterException.new(response.code, response.body)
+            end
+          when 400:
+            puts "**** Twitter Rate Limit Exceeded (#{response.code}) for #{data_input}."
+            rate_limit_exceeded = true
+            json_results[data_input] = TwitterException.new(response.code, response.body)
+          when 401:
+            puts "**** Twitter Authorization Failed (#{response.code}) for #{data_input}."
+            puts "Request URL: #{request.url}"
+            json_results[data_input] = TwitterException.new(response.code, response.body)
+          when 404:
+            puts "Unknown data_input: #{data_input}"              
+            puts "Request URL: #{request.url}"
+            json_results[data_input] = TwitterException.new(response.code, response.body)
+          when 502:
+            puts "Twitter Over capacity (#{response.code}) for data_input: #{data_input}.  Will retry."
+            puts "Request URL: #{request.url}"
             retries += 1
-            sleep_time = retries ** 2
-            puts "Will retrying after sleeping for #{sleep_time} seconds"
-            sleep sleep_time
-            hydra.queue request
-          end
-        when 0:
-          puts "**** Twitter Timeout (#{response.code}) for #{data_input}."
-          puts "Response body: #{response.body}"
-          retries += 1
-          sleep_time = retries ** 2
-          puts "Will retry after sleeping for #{sleep_time} seconds"
-          sleep sleep_time
-          hydra.queue request          
-        when 400:
-          puts "**** Twitter Rate Limit Exceeded (#{response.code}) for #{data_input}."
-          retries += 1
-          sleep_time = retries ** 2
-          puts "Will retry after sleeping for #{sleep_time} seconds"
-          sleep sleep_time
-          hydra.queue request          
-        when 401:
-          puts "**** Twitter Authorization Failed (#{response.code}) for #{data_input}."
-          puts "Request URL: #{request.url}"
-          json_results[data_input] = TwitterException.new(response.code, response.body)
-        when 404:
-          puts "Unknown data_input: #{data_input}"              
-          puts "Request URL: #{request.url}"
-          json_results[data_input] = TwitterException.new(response.code, response.body)
-        when 502:
-          puts "Twitter Over capacity (#{response.code}) for data_input: #{data_input}.  Will retry."
-          puts "Request URL: #{request.url}"
-          retries += 1
-          sleep_time = retries ** 2
-          puts "Will retry after sleeping for #{sleep_time} seconds"
-          sleep sleep_time
-          hydra.queue request
-        when 503:
-          puts "Twitter Service Unavailable (#{response.code}) for data_input: #{data_input}.  Will retry."
-          puts "Request URL: #{request.url}"
-          retries += 1
-          sleep_time = retries ** 2
-          puts "Will retry after sleeping for #{sleep_time} seconds"
-          sleep sleep_time
-          hydra.queue request
-        when 500:
-          puts "Twitter server error for data_input: #{data_input}.  Will retry."
-          puts "Request URL: #{request.url}"
-          retries += 1
-          sleep_time = retries ** 2
-          puts "Will retry after sleeping for #{sleep_time} seconds"
-          sleep sleep_time
-          hydra.queue request
-        else
-          logger.error "Unexpected HTTP result code: #{response.code}\n#{response.body}"
-          logger.error "Request URL: #{request.url}"
-          json_results[data_input] = TwitterException.new(response.code, response.body)
-        end        
+            if retries < MAX_RETRIES
+              sleep_time = retries**2
+              puts "Will retry after #{sleep_time} seconds."
+              sleep sleep_time
+              hydra.queue request
+            else
+              json_results[data_input] = TwitterException.new(response.code, response.body)
+            end
+          when 503:
+            puts "Twitter Service Unavailable (#{response.code}) for data_input: #{data_input}.  Will retry."
+            puts "Request URL: #{request.url}"
+            retries += 1
+            if retries < MAX_RETRIES
+              sleep_time = retries**2
+              puts "Will retry after #{sleep_time} seconds."
+              sleep sleep_time
+              hydra.queue request
+            else
+              json_results[data_input] = TwitterException.new(response.code, response.body)
+            end
+          when 500:
+            puts "Twitter server error for data_input: #{data_input}.  Will retry."
+            puts "Request URL: #{request.url}"
+            retries += 1
+            if retries < MAX_RETRIES
+              sleep_time = retries**2
+              puts "Will retry after #{sleep_time} seconds."
+              sleep sleep_time
+              hydra.queue request
+            else
+              json_results[data_input] = TwitterException.new(response.code, response.body)
+            end
+          else
+            logger.error "Unexpected HTTP result code: #{response.code}\n#{response.body}"
+            logger.error "Request URL: #{request.url}"
+            json_results[data_input] = TwitterException.new(response.code, response.body)
+          end        
+        end
+        hydra.queue request
       end
-      hydra.queue request
+      puts "+++ Running Hydra."
+      hydra.run
+      puts "--- Hydra run complete."
+      data_array = []
+      if timed_out_inputs.size > 0
+        puts "#{timed_out_inputs.size} ERRORS encountered."
+        while !timed_out_inputs.empty?
+          failed_input = timed_out_inputs.pop
+          puts "Reloading #{failed_input}"
+          data_array << failed_input
+        end
+        timeout_retries += 1
+        sleep_time = timeout_retries ** 2
+        puts "Will retry after #{sleep_time} seconds."
+        sleep sleep_time
+      end
     end
-    hydra.run
     json_results
   end  
   
