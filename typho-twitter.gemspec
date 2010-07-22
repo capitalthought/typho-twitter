@@ -46,16 +46,16 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
       s.add_development_dependency(%q<rspec>, [">= 1.2.9"])
-      s.add_runtime_dependency(%q<wdd-ruby-ext>, ["= 0.0.8"])
+      s.add_runtime_dependency(%q<wdd-ruby-ext>, [">= 0.0.8"])
       s.add_runtime_dependency(%q<typhoeus>, [">= 0.1.24"])
     else
       s.add_dependency(%q<rspec>, [">= 1.2.9"])
-      s.add_dependency(%q<wdd-ruby-ext>, ["= 0.0.8"])
+      s.add_dependency(%q<wdd-ruby-ext>, [">= 0.0.8"])
       s.add_dependency(%q<typhoeus>, [">= 0.1.24"])
     end
   else
     s.add_dependency(%q<rspec>, [">= 1.2.9"])
-    s.add_dependency(%q<wdd-ruby-ext>, ["= 0.0.8"])
+    s.add_dependency(%q<wdd-ruby-ext>, [">= 0.0.8"])
     s.add_dependency(%q<typhoeus>, [">= 0.1.24"])
   end
 end
