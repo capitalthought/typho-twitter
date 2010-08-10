@@ -84,7 +84,7 @@ class TyphoTwitter
 
   # Executes a batch of Twitter calls.  Automatically handles timeout_retries when possible on failures.
   # Returns a hash where each +data_array+ element is a key mapping to either 
-  # a hash containing the results of the twitter call or a TwitterException object of the twitter call failed.
+  # a hash containing the results of the twitter call or a TwitterException object of the twitter call that failed.
   # If +data_array+ is bigger than the concurrency_limit set in the TyphoTwitter constructor, it is broken
   # up into batches of requests by Typhoeus automatically.
   # +data_array+ - An array of data inputs, one for each twitter call
@@ -117,65 +117,66 @@ class TyphoTwitter
               json_results[data_input] = json_object
               retries = 0
             rescue JSON::ParserError
-              puts "TWITTER: #{$!.inspect}"
-              # puts response.body
               if timeout_retries < MAX_RETRIES
                 timed_out_inputs.push data_input
               else
                 json_results[data_input] = $!
+                logger.error "#{$!.inspect}"
+                logger.error "#{$!.backtrace.join("\n")}"
+                logger.error "response.body: •#{response.body}•"
               end
             end
           when 0:
-            puts "**** Twitter Timeout (#{response.code}) for #{data_input}."
-            puts "Response body: #{response.body}"
+            logger.debug "**** Twitter Timeout (#{response.code}) for #{data_input}."
+            logger.debug "Response body: #{response.body}"
             if timeout_retries < MAX_RETRIES
               timed_out_inputs.push data_input
             else
               json_results[data_input] = TwitterException.new(response.code, response.body)
             end
           when 400:
-            puts "**** Twitter Rate Limit Exceeded (#{response.code}) for #{data_input}."
+            logger.debug "**** Twitter Rate Limit Exceeded (#{response.code}) for #{data_input}."
             rate_limit_exceeded = true
             json_results[data_input] = TwitterException.new(response.code, response.body)
           when 401:
-            puts "**** Twitter Authorization Failed (#{response.code}) for #{data_input}."
-            puts "Request URL: #{request.url}"
+            logger.debug "**** Twitter Authorization Failed (#{response.code}) for #{data_input}."
+            logger.debug "Request URL: #{request.url}"
             json_results[data_input] = TwitterException.new(response.code, response.body)
           when 404:
-            puts "Unknown data_input: #{data_input}"              
-            puts "Request URL: #{request.url}"
+            logger.debug "Unknown data_input: #{data_input}"              
+            logger.debug "Request URL: #{request.url}"
             json_results[data_input] = TwitterException.new(response.code, response.body)
           when 502:
-            puts "Twitter Over capacity (#{response.code}) for data_input: #{data_input}.  Will retry."
-            puts "Request URL: #{request.url}"
+            logger.debug "Twitter Over capacity (#{response.code}) for data_input: #{data_input}.  Will retry."
+            logger.debug "Request URL: #{request.url}"
             retries += 1
             if retries < MAX_RETRIES
               sleep_time = retries**2
-              puts "Will retry after #{sleep_time} seconds."
+              logger.debug "Will retry after #{sleep_time} seconds."
               sleep sleep_time
               hydra.queue request
             else
               json_results[data_input] = TwitterException.new(response.code, response.body)
             end
           when 503:
-            puts "Twitter Service Unavailable (#{response.code}) for data_input: #{data_input}.  Will retry."
-            puts "Request URL: #{request.url}"
+            logger.debug "Twitter Service Unavailable (#{response.code}) for data_input: #{data_input}.  Will retry."
+            logger.debug "Request URL: #{request.url}"
             retries += 1
             if retries < MAX_RETRIES
               sleep_time = retries**2
-              puts "Will retry after #{sleep_time} seconds."
+              logger.debug "Will retry after #{sleep_time} seconds."
               sleep sleep_time
               hydra.queue request
             else
               json_results[data_input] = TwitterException.new(response.code, response.body)
             end
           when 500:
-            puts "Twitter server error for data_input: #{data_input}.  Will retry."
-            puts "Request URL: #{request.url}"
+            logger.debug "Twitter server error for data_input: #{data_input}.  Will retry."
+            logger.debug "Request URL: #{request.url}"
             retries += 1
             if retries < MAX_RETRIES
               sleep_time = retries**2
-              puts "Will retry after #{sleep_time} seconds."
+              logger.debug "Will retry after #{sleep_time} seconds."
               sleep sleep_time
               hydra.queue request
             else
@@ -189,20 +190,20 @@ class TyphoTwitter
         end
         hydra.queue request
       end
-      puts "+++ Running Hydra."
+      logger.debug "+++ Running Hydra."
       hydra.run
-      puts "--- Hydra run complete."
+      logger.debug "--- Hydra run complete."
       data_array = []
       if timed_out_inputs.size > 0
-        puts "#{timed_out_inputs.size} ERRORS encountered."
+        logger.debug "#{timed_out_inputs.size} ERRORS encountered."
         while !timed_out_inputs.empty?
           failed_input = timed_out_inputs.pop
-          puts "Reloading #{failed_input}"
+          logger.debug "Reloading #{failed_input}"
           data_array << failed_input
         end
         timeout_retries += 1
         sleep_time = timeout_retries ** 2
-        puts "Will retry after #{sleep_time} seconds."
+        logger.debug "Will retry after #{sleep_time} seconds."
         sleep sleep_time
       end
     end
@@ -247,7 +248,7 @@ class TyphoTwitter
         else
           continue = true
         end
-        puts "#{twitter_id} - #{master_results[twitter_id].length} followers retrieved."
+        logger.debug "#{twitter_id} - #{master_results[twitter_id].length} followers retrieved."
         continue
       end
     end
@@ -422,7 +423,7 @@ class TyphoTwitter
     count = 200
     while twitter_ids.length > 0
       page += 1 # Twitter starts with page 1
-      puts "Getting page #{page} for timelines."
+      logger.debug "Getting page #{page} for timelines."
       twitter_results = typho_twitter_batch( twitter_ids ) do |twitter_id|
         if twitter_id.is_a? Fixnum
           request = Typhoeus::Request.new("http://twitter.com/statuses/user_timeline.json?user_id=#{twitter_id}&page=#{page}&count=#{count}",
