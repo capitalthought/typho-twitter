@@ -71,7 +71,7 @@ class TyphoTwitter
   def initialize login, password, options={}
     @login, @password = login, password
     b64_encoded = Base64.b64encode("#{login}:#{password}")
-    @headers = {"Authorization" => "Basic #{b64_encoded}"}
+    # @headers = {"Authorization" => "Basic #{b64_encoded}"}
     @request_timeout = options[:request_timeout] || DEFAULT_REQUEST_TIMEOUT
     @concurrency_limit = options[:concurrency_limit] || DEFAULT_CONCURRENCY_LIMIT
     @logger = options[:logger]
@@ -456,3 +456,12 @@ class TyphoTwitter
 
 end
 
+if $0 == __FILE__
+  typho_twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
+  screen_name_array = %w[traverwall]
+  responses = typho_twitter.get_users_show( screen_name_array )
+  responses.each do |response|
+    puts response.to_s
+  end
+  
+end
