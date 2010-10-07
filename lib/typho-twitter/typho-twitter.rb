@@ -6,12 +6,14 @@ require "cgi"
 require "net/http"
 require "uri"
 require "time"
-require "typhoeus"
+# require "typhoeus"
 require "pp"
 require 'json'
 require 'base64'
 require 'logger'
 require "thread"
+require "oauth"
+require "oauth/request_proxy/typhoeus_request"
 
 # Class to abstract access to Twitter's Web Traffic API.
 # Makes use of the Typhoeus gem to enable concurrent API calls.
@@ -68,10 +70,14 @@ class TyphoTwitter
   # +options+ - :request_timeout Request timeout value in miliseconds
   # +options+ - :concurrency_limit Maximum number of concurrent Typhoeus requests
   # +options+ - :logger Logger to use - defaults to standard out with DEBUG level if not specified.
-  def initialize login, password, options={}
-    @login, @password = login, password
-    b64_encoded = Base64.b64encode("#{login}:#{password}")
-    # @headers = {"Authorization" => "Basic #{b64_encoded}"}
+  def initialize options={}
+    if options[:oauth]
+      @oauth_options = {}
+      @oauth_options[:consumer] = OAuth::Consumer.new( options[:oauth][:consumer_key], options[:oauth][:consumer_secret], :site => options[:oauth][:site] )
+      @oauth_options[:access_token] = OAuth::AccessToken.from_hash( @oauth_options[:consumer], :oauth_token=>options[:oauth][:token], :oauth_token_secret=>options[:oauth][:secret] )
+    end
+    @headers = {}
+    @options = options
     @request_timeout = options[:request_timeout] || DEFAULT_REQUEST_TIMEOUT
     @concurrency_limit = options[:concurrency_limit] || DEFAULT_CONCURRENCY_LIMIT
     @logger = options[:logger]
@@ -107,6 +113,11 @@ class TyphoTwitter
       timed_out_inputs = Queue.new
       data_array.each do |data_input|
         request = yield( data_input )
+        if @oauth_options
+          oauth_params = {:consumer => @oauth_options[:consumer], :token => @oauth_options[:access_token]}
+          oauth_helper = OAuth::Client::Helper.new(request, oauth_params.merge(:request_uri => request.url))
+          request.headers.merge!({"Authorization" => oauth_helper.header}) # Signs the request
+        end
         # printvar :request, request
         request.on_complete do |response|
           puts "[#{response.code}] - #{request.url}"
@@ -457,8 +468,16 @@ class TyphoTwitter
 end
 
 if $0 == __FILE__
-  typho_twitter = TyphoTwitter.new( 'buzzvoter', 'otherinbox2008' )
-  screen_name_array = %w[traverwall]
+  typho_twitter = TyphoTwitter.new( 
+    :oauth=>{
+      :consumer_key=>'hcsnYCFKhRpqg81Llk2SA', 
+      :consumer_secret=>'MYRMYFUOHMkw3dBoLV8Rslb83VALwffqPVY8Z6GQc', 
+      :token=>'72283727-qb1XnZncgxJYwePICwTVxz5OpLJVfHmc3lPbpMsSi', 
+      :secret=>'E8WeBFWtTvKIoA8yVlyIAZyB4c3rNQLbwBOhdCqkmQ',
+      :site=>'http://my.buzzmgr.com'
+    } 
+  )
+  screen_name_array = %w[traverwall capbuzzman hoonpark jotto]
   responses = typho_twitter.get_users_show( screen_name_array )
   responses.each do |response|
     puts response.to_s
