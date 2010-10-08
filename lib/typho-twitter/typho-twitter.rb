@@ -6,7 +6,6 @@ require "cgi"
 require "net/http"
 require "uri"
 require "time"
-# require "typhoeus"
 require "pp"
 require 'json'
 require 'base64'
