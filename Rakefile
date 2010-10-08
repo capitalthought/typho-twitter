@@ -12,7 +12,7 @@ begin
     gem.authors = ["shock"]
     gem.add_development_dependency "rspec", ">= 1.2.9"
     gem.add_dependency "wdd-ruby-ext", ">= 0.0.8"
-    gem.add_dependency "typhoeus", ">=0.1.24"
+    gem.add_dependency "oauth", ">=0.4.3"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
 #  Jeweler::GemcutterTasks.new
