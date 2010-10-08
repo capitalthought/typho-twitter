@@ -65,11 +65,18 @@ class TyphoTwitter
   DEFAULT_CONCURRENCY_LIMIT = 40
   MAX_RETRIES = 10
   
-  # +login+ - Twitter account login to use for authentication
-  # +password+ - Password for Twitter login
-  # +options+ - :request_timeout Request timeout value in miliseconds
-  # +options+ - :concurrency_limit Maximum number of concurrent Typhoeus requests
-  # +options+ - :logger Logger to use - defaults to standard out with DEBUG level if not specified.
+  # Create a TyphoTwitter instance.
+  # +options+ :
+  #   :request_timeout Request timeout value in miliseconds
+  #   :request_timeout Request timeout value in miliseconds
+  #   :concurrency_limit Maximum number of concurrent Typhoeus requests
+  #   :logger Logger to use - defaults to standard out with DEBUG level if not specified.
+  #   :oauth Used to authorize with Twitter API.
+  #     :consumer_key Consumer key for your application
+  #     :consumer_secret Consumer secret for your appilcation
+  #     :token Access token for the Twitter user to authenticate with
+  #     :secret Access token secret
+  #     :site The site URL for your application
   def initialize options={}
     if options[:oauth]
       @oauth_options = {}
@@ -222,11 +229,11 @@ class TyphoTwitter
   end  
   
 
-  # Retrieves the user data for a group of screen_names from Twitter.
-  # +id_array+ = An array twitter user ids, one for each user to get data for.  Can be user_ids or screen_names.
-  # Returns a Hash of objects from Twitter
-  def get_users_show id_array
-    typho_twitter_batch( id_array ) do |twitter_id|
+  # Retrieves user profile data for a group of Twitter users.
+  # +twitter_id_array+ = An array twitter user ids, one for each user to get data for.  Can be user_ids or screen_names.
+  # Returns a results Hash (see typho_twitter_batch)
+  def get_users_show twitter_id_array
+    typho_twitter_batch( twitter_id_array ) do |twitter_id|
       if twitter_id.is_a? Fixnum
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?user_id=#{twitter_id}",
           :headers => @headers,
@@ -242,7 +249,7 @@ class TyphoTwitter
     end
   end  
 
-  # Retrieves the followers records for a group of twitter_ids from Twitter.
+  # Retrieves the followers records for a group of Twitter users.
   # +twitter_id_array+ = An array twitter user ids, one for each user to get data for
   def get_statuses_followers twitter_id_array, limit=nil
     master_results = {}
@@ -277,14 +284,14 @@ class TyphoTwitter
   #
   # eg.
   #
-  # process_statuses_followers( ['bdoughty', 'joshuabaer'] ) do |twitter_id, followers|
-  #   puts "Twitter user #{twitter_id}"
-  #   continue = true
-  #   followers.each do |follower|
-  #     continue = false if follower[:twitter_id] == 'needle'
+  #   process_statuses_followers( ['bdoughty', 'joshuabaer'] ) do |twitter_id, followers|
+  #     puts "Twitter user #{twitter_id}"
+  #     continue = true
+  #     followers.each do |follower|
+  #       continue = false if follower[:twitter_id] == 'needle'
+  #     end
+  #     continue 
   #   end
-  #   continue 
-  # end
   def process_statuses_followers twitter_id_array, &block
 
     raise "You must supply a block to this method." if !block_given?    
@@ -339,14 +346,14 @@ class TyphoTwitter
   #
   # eg.
   #
-  # process_followers_ids( ['bdoughty', 'joshuabaer'] ) do |twitter_id, follower_ids|
-  #   puts "Twitter user #{twitter_id}"
-  #   continue = true
-  #   follower_ids.each do |follower_id|
-  #     continue = false if follower_id == SOME_TWITTER_USER_ID
+  #   process_followers_ids( ['bdoughty', 'joshuabaer'] ) do |twitter_id, follower_ids|
+  #     puts "Twitter user #{twitter_id}"
+  #     continue = true
+  #     follower_ids.each do |follower_id|
+  #       continue = false if follower_id == SOME_TWITTER_USER_ID
+  #     end
+  #     continue 
   #   end
-  #   continue 
-  # end
   def process_followers_ids twitter_id_array, &block
 
     raise "You must supply a block to this method." if !block_given?    
@@ -422,13 +429,13 @@ class TyphoTwitter
   #
   # eg.
   #
-  # process_statuses_user_timeline( ['bdoughty', 'joshuabaer'] ) do |twitter_id, updates|
-  #   puts "Twitter user #{twitter_id}"
-  #   updates.each do |update|
-  #     # do something with each status update
+  #   process_statuses_user_timeline( ['bdoughty', 'joshuabaer'] ) do |twitter_id, updates|
+  #     puts "Twitter user #{twitter_id}"
+  #     updates.each do |update|
+  #       # do something with each status update
+  #     end
+  #     (twitter_id == 'bdoughty')  # block return value - aborts 'joshuabaer' after the first page, continues 'bdoughty'
   #   end
-  #   (twitter_id == 'bdoughty')  # block return value - aborts 'joshuabaer' after the first page, continues 'bdoughty'
-  # end
   def process_statuses_user_timeline twitter_ids, &block
     page = 0
     count = 200
@@ -465,22 +472,4 @@ class TyphoTwitter
     nil
   end  
 
-end
-
-if $0 == __FILE__
-  typho_twitter = TyphoTwitter.new( 
-    :oauth=>{
-      :consumer_key=>'hcsnYCFKhRpqg81Llk2SA', 
-      :consumer_secret=>'MYRMYFUOHMkw3dBoLV8Rslb83VALwffqPVY8Z6GQc', 
-      :token=>'72283727-qb1XnZncgxJYwePICwTVxz5OpLJVfHmc3lPbpMsSi', 
-      :secret=>'E8WeBFWtTvKIoA8yVlyIAZyB4c3rNQLbwBOhdCqkmQ',
-      :site=>'http://my.buzzmgr.com'
-    } 
-  )
-  screen_name_array = %w[traverwall capbuzzman hoonpark jotto]
-  responses = typho_twitter.get_users_show( screen_name_array )
-  responses.each do |response|
-    puts response.to_s
-  end
-  
 end

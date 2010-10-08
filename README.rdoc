@@ -1,17 +1,61 @@
-= typho-twitter
+= Typho Twitter
 
-Description goes here.
+== What
 
-== Note on Patches/Pull Requests
- 
-* Fork the project.
-* Make your feature addition or bug fix.
-* Add tests for it. This is important so I don't break it in a
-  future version unintentionally.
-* Commit, do not mess with rakefile, version, or history.
-  (if you want to have your own version, that is fine but bump version in a commit by itself I can ignore when I pull)
-* Send me a pull request. Bonus points for topic branches.
+This is a RubyGem to simplify sending parallel batches of requests to the Twitter API in Ruby applications.
 
-== Copyright
+It is based on Typhoeus and OAuth.
 
-Copyright (c) 2010 shock. See LICENSE for details.
+It is currently a work in progress.  Comments, suggestions, and feedback are welcome and encouraged.
+
+== Why
+
+Some applications need to send lots of individual requests to the Twitter API to do things such as retrieve details from a group of users, or get the recent statuses for a group of users.
+
+For a sizable number of requests, doing this serially is extremely slow.  TyphoTwitter lets you perform a batch of like requests in parallel, drastically reducing the amount of time it takes to perform the same number of requests.
+
+== Installing
+
+  sudo gem install typho-twitter
+
+The source code is hosted on GitHub: http://github.com/shock/typho-twitter
+
+== The basics
+
+
+== Demonstration of usage
+
+Create a TyphoTwitter instance.  If you need to authorize:
+
+  @typho_twitter = TyphoTwitter.new( 
+    :oauth=>{
+      :consumer_key=>'XXXXXXX', 
+      :consumer_secret=>'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY', 
+      :token=>'XXXXXXX-YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY', 
+      :secret=>'ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ',
+      :site=>'http://example.com'
+    } 
+  )
+  screen_name_array = %w[02Blazer 080808news 0Amna0 100PercentTX 1043LaQueBuena 1049TheHorn 1070thefan 1070WINA 10jackrussel 10rWfe 10tonreverb 1337studios 141chars 1450whtc 1660THEFAN 16mthsapart 1968mike 1capplegate 1LUVMRWAY 1MattHopkins 1OneStone 1realestateteam 1stbassguitar 1stBrand 1ststepsmoney 1TeeTime 1weightliftin 2001MUgrad 203klender 20thCFlicks]
+  responses = @typho_twitter.get_users_show( screen_name_array )
+  responses.each do |response|
+    puts response.to_s
+  end
+
+== More Information
+
+* RDoc: http://rdoc.info/projects/shock/typho-twitter/
+
+== How to submit patches
+
+The source code is hosted on the GitHub: http://github.com/shock/typho-twitter
+
+To submit a patch, please fork the typho-twitter project and create a patch with tests. Once you're happy with it send a pull request and post a message to the google group.
+
+== License
+
+This code is free to use under the terms of the MIT license. 
+
+== Contact
+
+Comments are welcome. Send an email to me at typho-twitter@wdd.oib.com
