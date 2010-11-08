@@ -101,8 +101,8 @@ class TyphoTwitter
   # up into batches of requests by Typhoeus automatically.
   # +data_array+ - An array of data inputs, one for each twitter call
   # +&block+ - A block that accepts an element of +data_array+ and returns a Tyhpoeus::Request object.
-  def typho_twitter_batch data_array, continue=true, &block
-    
+  def typho_twitter_batch data_array, continue=Proc.new{true}, &block
+    @continue = continue
     json_results = {}
     timeout_retries = 0
     time_gate = WDD::Utilities::TimeGate.new
@@ -111,7 +111,7 @@ class TyphoTwitter
       puts "Waiting on rate limiting Time Gate"
       time_gate.wait_while_true continue
       puts "Time Gate released"
-      break unless continue
+      break unless @continue.call
       hydra = Typhoeus::Hydra.new(:max_concurrency => @concurrency_limit)
       hydra.disable_memoization
       
@@ -119,7 +119,7 @@ class TyphoTwitter
       
       timed_out_inputs = Queue.new
       data_array.each do |data_input|
-        break unless continue
+        break unless @continue.call
         request = yield( data_input )
         if @oauth_options
           oauth_params = {:consumer => @oauth_options[:consumer], :token => @oauth_options[:access_token]}
@@ -233,7 +233,7 @@ class TyphoTwitter
   # Retrieves user profile data for a group of Twitter users.
   # +twitter_id_array+ = An array twitter user ids, one for each user to get data for.  Can be user_ids or screen_names.
   # Returns a results Hash (see typho_twitter_batch)
-  def get_users_show twitter_id_array, continue = true
+  def get_users_show twitter_id_array, continue = Proc.new{true}
     typho_twitter_batch( twitter_id_array, continue ) do |twitter_id|
       if twitter_id.is_a? Fixnum
         request = Typhoeus::Request.new("http://twitter.com/users/show.json?user_id=#{twitter_id}",
