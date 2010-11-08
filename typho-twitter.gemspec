@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{typho-twitter}
-  s.version = "0.1.2"
+  s.version = "0.2.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["shock"]
-  s.date = %q{2010-10-08}
+  s.date = %q{2010-11-08}
   s.description = %q{A Twitter client for performing a batch of Twitter calls in parallel.}
   s.email = %q{billdoughty@capitalthought.com}
   s.extra_rdoc_files = [
