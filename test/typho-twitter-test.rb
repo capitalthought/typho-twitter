@@ -9,7 +9,7 @@ $: << BASE_DIR
 require 'typho-twitter'
 require 'test/unit'
 include Test::Unit::Assertions
-include WDD::Utilities
+include WDD::Utils
 
 UNKNOWN_ID = 'mixtercox'
 TEST_USER_IDS = [ 
@@ -217,7 +217,7 @@ def test_process_statuses_user_timeline_with_abort
 end  
 
 def time_it method_id
-  et = WDD::Utilities::elapsed_time do
+  et = WDD::Utils::elapsed_time do
     self.send( method_id )
   end
   puts "========================================"

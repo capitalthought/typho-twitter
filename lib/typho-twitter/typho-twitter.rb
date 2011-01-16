@@ -19,7 +19,7 @@ require "oauth/request_proxy/typhoeus_request"
 
 class TyphoTwitter
   
-  include WDD::Utilities
+  include WDD::Utils
   
   private
   
@@ -105,7 +105,7 @@ class TyphoTwitter
     
     json_results = {}
     timeout_retries = 0
-    time_gate = WDD::Utilities::TimeGate.new
+    time_gate = WDD::Utils::TimeGate.new
     rate_limit_exceeded = false
     while data_array.length > 0
       puts "Waiting on rate limiting Time Gate"

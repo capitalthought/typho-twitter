@@ -21,3 +21,4 @@ pkg
 ## PROJECT::SPECIFIC
 
 test/oauth.yaml
+.rvmrc
