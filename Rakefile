@@ -10,9 +10,9 @@ begin
     gem.email = "billdoughty@capitalthought.com"
     gem.homepage = "http://github.com/capitalthought/typho-twitter"
     gem.authors = ["shock"]
-    gem.add_development_dependency "rspec", ">= 1.2.9"
-    gem.add_dependency "wdd-ruby-ext", ">= 0.3.1"
-    gem.add_dependency "oauth", ">=0.4.3"
+    gem.add_development_dependency "rspec", "~> 1.2.9"
+    gem.add_dependency "wdd-ruby-ext", "~> 0.3.1"
+    gem.add_dependency "oauth", "~> 0.4.3"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new
